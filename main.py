@@ -24,7 +24,8 @@ from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
-DATABASE_URL = "sqlite:///livros.db"  # URL do banco de dados SQLite
+# Puxa a URL do banco do arquivo .env ou usa o padrão local
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./livros.db")
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -118,9 +119,9 @@ def post_livros(livro: Livro, db: Session = Depends(sessao_db), credentials: HTT
         raise HTTPException(status_code=400, detail="Esse livro já existe no banco de dados.")
 
     novo_livro = LivroDB(nome_livro=livro.nome_livro, autor_livro=livro.autor_livro, ano_livro=livro.ano_livro)
-    db.add(db_livro)
+    db.add(novo_livro)
     db.commit()
-    db.refresh(db_livro)
+    db.refresh(novo_livro)
 
     return {"mensagem": "Livro adicionado com sucesso."}
 
@@ -133,19 +134,23 @@ def put_livro(id_livro: int, livro: Livro, db: Session = Depends(sessao_db), cre
     if not db_livro:
         raise HTTPException(status_code=404, detail="Esse livro não foi encontrado no seu banco de dados.")
     
-        db_livro.nome_livro = livro.nome_livro
-        db_livro.autor_livro = livro.autor_livro
-        db_livro.ano_livro = livro.ano_livro
+    db_livro.nome_livro = livro.nome_livro
+    db_livro.autor_livro = livro.autor_livro
+    db_livro.ano_livro = livro.ano_livro
 
-        db.commit()
-        db.refresh(db_livro)
+    db.commit()
+    db.refresh(db_livro)
 
-        return {"mensagem": "Livro atualizado com sucesso."}
+    return {"mensagem": "Livro atualizado com sucesso."}
 
 # ROTA DELETE
 # {id_livro} identifica qual livro será deletado.
 @app.delete("/deleta/{id_livro}")
-def delete_livro(id_livro: int, credentials: HTTPBasicCredentials = Depends(autenticar_meu_usuario)):
+def delete_livro(
+    id_livro: int,  
+    credentials: HTTPBasicCredentials = Depends(autenticar_meu_usuario),
+    db: Session = Depends(sessao_db)
+):
     db_livro = db.query(LivroDB).filter(LivroDB.id == id_livro).first()
 
     if not db_livro:
@@ -153,5 +158,4 @@ def delete_livro(id_livro: int, credentials: HTTPBasicCredentials = Depends(aute
 
     db.delete(db_livro)
     db.commit()
-
     return {"mensagem": "Livro deletado com sucesso."}

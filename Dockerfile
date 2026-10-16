@@ -17,6 +17,7 @@ COPY pyproject.toml poetry.lock ./
 
 RUN poetry config virtualenvs.create false && poetry install --no-root
 
+# Primeiro . copia tudo oque está na pasta atual do projeto e o segundo . cola tudo na pasta atual de trabalho dentro do container
 COPY . .
 
 EXPOSE 8000
